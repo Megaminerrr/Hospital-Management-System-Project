@@ -126,6 +126,15 @@ class Department(Base):
     doctor = relationship("Doctor", back_populates="department")
     administrators = relationship("Administrator", back_populates="department")
 
+class Room(Base):
+    __tablename__ = 'room'
+
+    Room_ID = Column(Integer, primary_key=True)
+    Appt_ID = Column(Integer, ForeignKey('appointment.Appt_ID'))
+    room_type = Column(String(50))
+
+    appointment = relationship("Appointment", backref="room")
+
 
 # ---------------------------
 # DATABASE INITIALIZATION
