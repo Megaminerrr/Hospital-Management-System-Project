@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Patient Portal</title>
+</head>
+<body>
+  <h1>Welcome {{ patient.First_Name }} {{ patient.Last_Name }}!</h1>
+  <button onclick="window.location.href='/profile'">Profile</button>
+  <button>View appointments</button>
+  <button>Bills</button>
+  <button>Medical records</button>
+  <button>Request an appointment</button>
+  <br><br>
+  <a href="/logout">Logout</a>
+</body>
+</html>

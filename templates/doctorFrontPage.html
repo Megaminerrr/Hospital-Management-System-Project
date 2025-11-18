@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Doctor Profile</title>
+</head>
+<body>
+
+<h1>Doctor Profile</h1>
+
+<p><strong>Email:</strong> {{ user.Email }}</p>
+<p><strong>First Name:</strong> {{ doctor.First_Name }}</p>
+<p><strong>Last Name:</strong> {{ doctor.Last_Name }}</p>
+<p><strong>Specialization:</strong> {{ doctor.Specialization }}</p>
+
+<br>
+
+<button>Edit Profile</button>
+
+<br><br>
+<a href="/doctor_home">Back</a> |
+<a href="/logout">Logout</a>
+
+</body>
+</html>
