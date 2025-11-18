@@ -135,6 +135,36 @@ class Room(Base):
 
     appointment = relationship("Appointment", backref="room")
 
+def get_session(engine):
+    Session = sessionmaker(bind=engine)
+    return Session()
+
+# CREATE
+def add_user(session, email, password, user_type):
+    new_user = User(Email=email, Password=password, User_Type=user_type)
+    session.add(new_user)
+    session.commit()
+    return new_user
+
+# READ
+def get_user_by_email(session, email):
+    return session.query(User).filter_by(Email=email).first()
+
+# UPDATE
+def update_user_password(session, user_id, new_password):
+    user = session.query(User).filter_by(User_ID=user_id).first()
+    if user:
+        user.Password = new_password
+        session.commit()
+    return user
+
+# DELETE
+def delete_user(session, user_id):
+    user = session.query(User).filter_by(User_ID=user_id).first()
+    if user:
+        session.delete(user)
+        session.commit()
+
 
 # ---------------------------
 # DATABASE INITIALIZATION
@@ -146,5 +176,10 @@ def init_db():
     Base.metadata.create_all(engine)
     return engine
 
-if __name__ == "__main__":
-    engine = init_db()
+engine = init_db()
+Session = sessionmaker(bind=engine)
+session = Session()
+
+    # Nyt voit käyttää access-funktioita
+    #user = add_user(session, "test@example.com")
+    #print(get_user(session, user.User_ID))
