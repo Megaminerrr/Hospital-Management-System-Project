@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Doctor Portal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
+</head>
+<body>
+  <app-topbar></app-topbar>
+  <h1>Welcome {{ doctor.First_Name }} {{ doctor.Last_Name }}!</h1>
+  <button onclick="window.location.href='/profile'">Profile</button>
+  <button onclick="window.location.href='/ViewAppointments'">View appointments</button>
+  <button>Schedule</button>
+  <br><br>
+  <a href="/logout">Logout</a>
+  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+</body>
+</html>

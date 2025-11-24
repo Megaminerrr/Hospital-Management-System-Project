@@ -3,27 +3,13 @@
   <head>
     <meta charset="UTF-8">
     <title>Admin View</title>
-    <link rel="stylesheet" href="css/style.css">
+    <!-- If file is static/style.css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
 
   <body>
 
-    <div class="topbar">
-      <div class="topbar_logo">
-	<h1>Title</h1>
-      </div>
-      <div class="topbar_elements">
-	
-	<div class="dropdown">
-	  <button class="btn_dropdown"></button>
-	  <div class="dropdown-content">
-	    <a href="index.html">Home Page</a>
-	    <a href="AnotherPage.html">Another Page</a>
-	    <button class="btn_login">Log Out</button>
-	  </div>
-	</div>
-      </div>
-    </div>
+    <app-topbar></app-topbar>
 
 
     
@@ -48,6 +34,6 @@
     
     <a href="index.html" class="btn">This is a button</a>
 
-    <script src="js/scripts.js"></script>    
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>  
   </body>
 </html>

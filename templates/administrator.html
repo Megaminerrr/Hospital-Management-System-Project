@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Administrator Portal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
+</head>
+<body>
+  <app-topbar></app-topbar>
+  <h1>Welcome {{ administrator.First_Name }}  {{ administrator.Last_Name }}!</h1>
+  <button onclick="window.location.href='/profile'">Profile</button>
+  <button>View appointments</button>
+  <button>Administrator view</button>
+  <button onclick="window.location.href='/ViewRecords'">Records</button>
+  <br><br>
+  <a href="/logout">Logout</a>
+  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Patient Profile</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
+</head>
+<body>
+    <app-topbar></app-topbar>
+
+<h1>Patient Profile</h1>
+
+<p><strong>Email:</strong> {{ user.Email }}</p>
+<p><strong>First Name:</strong> {{ patient.First_Name }}</p>
+<p><strong>Last Name:</strong> {{ patient.Last_Name }}</p>
+<p><strong>Address:</strong> {{ patient.Address }}</p>
+<p><strong>Phone:</strong> {{ patient.Phone }}</p>
+
+<br>
+
+<button>Edit Profile</button>
+
+<br><br>
+<a href="/patient_home">Back</a> |
+<a href="/logout">Logout</a>
+<script src="{{ url_for('static', filename='scripts.js') }}"></script>
+
+</body>
+</html>

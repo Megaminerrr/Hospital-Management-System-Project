@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>View Records</title>
+    <!-- If file is static/style.css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
+  </head>
+
+  <body>
+
+    <app-topbar></app-topbar>
+
+
+    
+    <h1>View Records</h1>
+    <p>View Detailed Records</p>
+
+    <div class="records-table">
+      <button type="button" onclick="DisplayRecords('Doctors')"">Doctors</button>
+      <button type="button" onclick="DisplayRecords('Patients')"">Patients</button>
+      <button type="button" onclick="DisplayRecords('Appointments')"">Appointments</button>
+      <button type="button" onclick="DisplayRecords('Treatments')"">Treatments</button>
+      <button type="button" onclick="DisplayRecords('Rooms')"">Rooms</button>
+      <table id="dynamicTable" class="records-table">
+	      <thead>
+          <tr id="tableHeader"></tr>
+	      </thead>
+	      <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    
+    <a href="/home" class="btn">Back</a>
+
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Render Patients table on page load
+        DisplayRecords("Patients");
+      });
+    </script>    
+
+  </body>
+</html>

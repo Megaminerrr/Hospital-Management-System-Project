@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Doctor Profile</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
+</head>
+<body>
+    <app-topbar></app-topbar>
+
+<h1>Doctor Profile</h1>
+
+<p><strong>Email:</strong> {{ user.Email }}</p>
+<p><strong>First Name:</strong> {{ doctor.First_Name }}</p>
+<p><strong>Last Name:</strong> {{ doctor.Last_Name }}</p>
+<p><strong>Specialization:</strong> {{ doctor.Specialization }}</p>
+
+<br>
+
+<button>Edit Profile</button>
+
+<br><br>
+{% set did = (doctor.Doctor_ID if doctor is defined else (doctor_id if doctor_id is defined else session.get('doctor_id'))) %}
+<a href="{{ url_for('doctor_page', doctor_id=did) }}">Back</a>
+<a href="/logout">Logout</a>
+<script src="{{ url_for('static', filename='scripts.js') }}"></script>
+
+</body>
+</html>

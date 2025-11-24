@@ -100,8 +100,21 @@
 .dropdown:hover .dropdown-content {
   display: block;
 }
+.adminview-panel1 {
+    width: 98%;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.adminview-sidebuttons {
+    display: block;
+    align-items: top;
+}
+
 .search-list {
-  width: 250px;
+  width: 50%;
   font-family: Arial;
 }
 
@@ -127,4 +140,15 @@
 
 .item:hover {
   background: #eee;
+}
+
+
+.records-table {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.records-table .table{
+  width: 98%;
+  table-layout: fixed;
 }
