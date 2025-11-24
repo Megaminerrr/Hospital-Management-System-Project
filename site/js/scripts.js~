@@ -1,0 +1,28 @@
+function isAlpha(c) {
+    return /^[A-Za-z]$/.test(c);
+}
+function isNumeric(c) {
+    return /^[0-9]$/.test(c);
+}
+
+function CleanString(str){
+    let cleanedStr = "";
+    for (let i = 0; i < str.length; i++) {
+	let c = str[i];
+	if( isAlpha(c) || isNumeric(c) || c == ' '){
+	    cleanedStr += c;
+	}
+    }
+    return cleanedStr;
+}
+
+function filterList() {
+    let input = CleanString(document.getElementById("searchInput").value.toLowerCase());
+    let items = document.querySelectorAll(".list-box .item");
+
+  items.forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(input)
+      ? "block"
+      : "none";
+  });
+}
