@@ -75,7 +75,7 @@ class Appointment(Base):
     Patient_ID = Column(Integer, ForeignKey('patient.Patient_ID'))
     Date = Column(Date)
     Time = Column(Time)
-    Symptoms = Column(string(100))
+    Symptoms = Column(String(100))
     
     doctor = relationship("Doctor", back_populates="appointments")
     patient = relationship("Patient", back_populates="appointments")
@@ -181,7 +181,3 @@ def init_db():
 engine = init_db()
 Session = sessionmaker(bind=engine)
 session = Session()
-
-    # Nyt voit käyttää access-funktioita
-    #user = add_user(session, "test@example.com")
-    #print(get_user(session, user.User_ID))

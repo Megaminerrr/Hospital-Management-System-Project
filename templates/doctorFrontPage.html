@@ -41,15 +41,10 @@
 <br>
 
 <br><br>
-<<<<<<< HEAD
 {% set did = (doctor.Doctor_ID if doctor is defined else (doctor_id if doctor_id is defined else session.get('doctor_id'))) %}
-<a href="{{ url_for('doctor_page', doctor_id=did) }}">Back</a>
+<a href="{{ url_for('doctor_page', doctor_id=did) }}">Back</a> |
 <a href="/logout">Logout</a>
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-=======
-<a href="{{ url_for('home') }}">Back</a> |
-<a href="/logout">Logout</a>
->>>>>>> origin/frontend
 
 </body>
 </html>
