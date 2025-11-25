@@ -72,7 +72,7 @@
       <button onclick="window.location.href='{{ url_for('AppointmentView', user_id=patient.Patient_ID) }}'">View appointments</button> 
       <button>Bills</button>
       <button>Medical records</button>
-      <button>Request an appointment</button>
+      <button onclick="window.location.href='/RequestAppointment'">Request an appointment</button>
     </div>
     <a href="/logout" class="logout">Logout</a>
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
