@@ -16,20 +16,18 @@ def login():
         return render_template("index.html", error="Email or password is incorrect")
 
     session["user_id"] = user.User_ID
-    session["user_type"] = user.User_Type
+    session["user_type"] = user.User_Type.lower()
 
-    if user.User_Type.lower() == "patient":
-        patient = db_session.query(Patient).filter(Patient.Patient_ID == user.User_ID).first()
-        session["patient_id"] = patient.Patient_ID
-        return redirect(url_for("patient_page", patient_id=patient.Patient_ID))
-    elif user.User_Type.lower() == "doctor":
-        doctor = db_session.query(Doctor).filter(Doctor.Doctor_ID == user.User_ID).first()
-        session["doctor_id"] = doctor.Doctor_ID
-        return redirect(url_for("doctor_page", doctor_id=user.User_ID))
-    elif user.User_Type.lower() == "admin":
-        admin = db_session.query(Administrator).filter(Administrator.Admin_ID == user.User_ID).first()
-        session["admin_id"] = admin.Admin_ID
-        return redirect(url_for("admin_page", admin_id=user.User_ID))
+    if session["user_type"] == "patient" and user.patient_profile:
+        session["patient_id"] = user.patient_profile.Patient_ID
+        return redirect(url_for("patient_page", patient_id=user.patient_profile.Patient_ID))
+    elif session["user_type"] == "doctor" and user.doctor_profile:
+        session["doctor_id"] = user.doctor_profile.Doctor_ID
+        return redirect(url_for("doctor_page", doctor_id=user.doctor_profile.Doctor_ID))
+    elif session["user_type"] == "admin" and user.admin_profile:
+        session["admin_id"] = user.admin_profile.Admin_ID
+        return redirect(url_for("admin_page", admin_id=user.admin_profile.Admin_ID))
+
     return "User logged in: " + user.User_Type
 
 # --- MAIN PAGE ---
@@ -122,15 +120,17 @@ def profile():
 
     user = db_session.query(User).filter(User.User_ID == user_id).first()
 
+    user_id = session["user_id"]
+    user_type = session.get("user_type", "").lower()
+
+    user = db_session.query(User).filter(User.User_ID == user_id).first()
+
     if user_type == "patient":
-        patient = db_session.query(Patient).filter(Patient.Patient_ID == user_id).first()
-        return render_template("patientFrontPage.html", user=user, patient=patient)
+        return render_template("patientFrontPage.html", user=user, patient=user.patient_profile)
     elif user_type == "doctor":
-        doctor = db_session.query(Doctor).filter(Doctor.Doctor_ID == user_id).first()
-        return render_template("doctorFrontPage.html", user=user, doctor=doctor)
+        return render_template("doctorFrontPage.html", user=user, doctor=user.doctor_profile)
     elif user_type == "admin":
-        admin = db_session.query(Administrator).filter(Administrator.Admin_ID == user_id).first()
-        return render_template("adminFrontPage.html", user=user, admin=admin)
+        return render_template("adminFrontPage.html", user=user, admin=user.admin_profile)
 
     return redirect("/")
 
