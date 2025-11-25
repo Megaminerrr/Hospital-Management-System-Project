@@ -81,6 +81,24 @@ def signup():
 
     return jsonify({"status": "ok"})
 
+# --- EDIT PROFILE PAGE ---
+@app.route("/edit_profile")
+def edit_profile():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    user_id = session["user_id"]
+    user_type = session.get("user_type", "").lower()
+
+    user = db_session.query(User).filter(User.User_ID == user_id).first()
+
+    if user_type == "patient":
+        patient = db_session.query(Patient).filter(Patient.Patient_ID == user_id).first()
+        return render_template("editProfile.html", user=user, patient=patient)
+    
+    return redirect(url_for("profile"))
+
+
 # --- PATIENT PAGE ---
 @app.route("/patient/<int:patient_id>")
 def patient_page(patient_id):
