@@ -128,6 +128,9 @@ def profile():
     elif user_type == "doctor":
         doctor = db_session.query(Doctor).filter(Doctor.Doctor_ID == user_id).first()
         return render_template("doctorFrontPage.html", user=user, doctor=doctor)
+    elif user_type == "admin":
+        admin = db_session.query(Administrator).filter(Administrator.Admin_ID == user_id).first()
+        return render_template("adminFrontPage.html", user=user, admin=admin)
 
     return redirect("/")
 
