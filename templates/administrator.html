@@ -1,19 +1,21 @@
 <!doctype html>
 <html lang="fi">
 <head>
-<meta charset="utf-8">
-<title>Administrator Portal</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
+  <meta charset="utf-8">
+  <title>Administrator Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <app-topbar></app-topbar>
-  <h1>Welcome {{ administrator.First_Name }}  {{ administrator.Last_Name }}!</h1>
-  <button onclick="window.location.href='/profile'">Profile</button>
-  <button onclick="window.location.href='{{ url_for('AppointmentView', user_id=administrator.Admin_ID) }}'">View appointments</button>
-  <button>Administrator view</button>
-  <button onclick="window.location.href='/ViewRecords'">Records</button>
-  <br><br>
-  <a href="/logout">Logout</a>
-  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+  <div class="container">
+    <h1>Welcome {{ administrator.First_Name }}  {{ administrator.Last_Name }}!</h1>
+    <div class="button-grid">
+      <button onclick="window.location.href='/profile'">Profile</button>
+      <button onclick="window.location.href='{{ url_for('AppointmentView', user_id=administrator.Admin_ID) }}'">View appointments</button>
+      <button>Administrator view</button>
+      <button onclick="window.location.href='/ViewRecords'">Records</button>
+    </div>  
+    <a href="/logout">Logout</a>
+  </div>
 </body>
 </html>

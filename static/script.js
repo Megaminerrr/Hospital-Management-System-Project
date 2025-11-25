@@ -21,6 +21,8 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
                 window.location.href = "patient.html";
             } else if (data.type.toLowerCase() === "doctor") {
                 window.location.href = "doctor.html";
+            } else if (data.type.toLowerCase() === "admin") {
+                window.location.href = "administrator.html";
             }
         } else {
             alert("Wrong credentials");

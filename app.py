@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from models import User, Patient, Doctor, Administrator, Appointment, Room, Treatment, session as db_session
 
+
 app = Flask(__name__)
 app.secret_key = "muuta_tähän_turvallinen_salaisuus"
 
@@ -35,6 +36,50 @@ def login():
 @app.route("/")
 def index():
     return render_template("index.html", error=None)
+
+# --- SIGN UP PAGE ---
+
+@app.route("/signup", methods=["GET"])
+def signup_page():
+    return render_template("signup.html")
+
+@app.route("/signup", methods=["POST"])
+def signup():
+    data = request.json 
+
+    email = data.get("email")
+    password = data.get("password")
+    first_name = data.get("first_name")
+    last_name = data.get("last_name")
+    address = data.get("address")
+    phone = data.get("phone")
+
+    # Check if email exists
+    existing = db_session.query(User).filter_by(Email=email).first()
+    if existing:
+        return jsonify({"status": "error", "message": "Email already exists"}), 400
+
+    # Create user (ALWAYS patient)
+    new_user = User(
+        Email=email,
+        Password=password,
+        User_Type="patient"
+    )
+    db_session.add(new_user)
+    db_session.commit()
+
+    # Create patient profile
+    profile = Patient(
+        Patient_ID=new_user.User_ID,
+        First_Name=first_name,
+        Last_Name=last_name,
+        Address=address,
+        Phone=phone
+    )
+    db_session.add(profile)
+    db_session.commit()
+
+    return jsonify({"status": "ok"})
 
 # --- PATIENT PAGE ---
 @app.route("/patient/<int:patient_id>")
@@ -230,5 +275,6 @@ def api_treatments():
     response = jsonify(data)
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
+
 if __name__ == "__main__":
     app.run(debug=True)
