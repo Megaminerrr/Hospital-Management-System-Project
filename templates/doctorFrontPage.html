@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Doctor Profile</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -30,7 +31,7 @@
 </style>
 </head>
 <body>
-
+<app-topbar></app-topbar>
 <h1>Doctor Profile</h1>
 
 <p><strong>Email:</strong> {{ user.Email }}</p>
@@ -43,14 +44,10 @@
 <button>Edit Profile</button>
 
 <br><br>
-<<<<<<< HEAD
 {% set did = (doctor.Doctor_ID if doctor is defined else (doctor_id if doctor_id is defined else session.get('doctor_id'))) %}
 <a href="{{ url_for('doctor_page', doctor_id=did) }}">Back</a>
 <a href="/logout">Logout</a>
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-=======
-<a href="/logout">Logout</a>
->>>>>>> origin/frontend
 
 </body>
 </html>
