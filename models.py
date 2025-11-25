@@ -111,7 +111,8 @@ class Bill(Base):
     Patient_ID = Column(Integer, ForeignKey('patient.Patient_ID'))
     Date = Column(Date)
     Cost = Column(Float)
-
+    Paid = Column(String(3))
+    
     patient = relationship("Patient", back_populates="bills")
 
 
