@@ -210,7 +210,12 @@ def AppointmentView(user_id):
         # Admins see all appointments
         appointments = db_session.query(Appointment).all()
 
-    return render_template("AppointmentView.html", user=user, user_type=user_type, appointments=appointments)
+        return render_template("AppointmentView.html", user=user, user_type=user_type, appointments=appointments)
+
+# --- Request Appointment Page ---
+@app.route("/RequestAppointment")
+def RequestAppointment():
+    return render_template("RequestAppointment.html")
 
 # --- Requests ---
 @app.get("/api/patients")
