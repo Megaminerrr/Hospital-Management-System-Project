@@ -137,7 +137,17 @@ def AppointmentView(user_id):
 
     user = db_session.query(User).filter(User.User_ID == user_id).first()
 
-    return render_template("AppointmentView.html", user=user)
+    # Fetch appointments based on role
+    appointments = []
+    if user_type == "patient":
+        appointments = db_session.query(Appointment).filter(Appointment.Patient_ID == user_id).all()
+    elif user_type == "doctor":
+        appointments = db_session.query(Appointment).filter(Appointment.Doctor_ID == user_id).all()
+    elif user_type == "admin":
+        # Admins see all appointments
+        appointments = db_session.query(Appointment).all()
+
+    return render_template("AppointmentView.html", user=user, user_type=user_type, appointments=appointments)
 
 # --- Requests ---
 @app.get("/api/patients")

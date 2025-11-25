@@ -9,7 +9,7 @@
   <app-topbar></app-topbar>
   <h1>Welcome {{ patient.First_Name }} {{ patient.Last_Name }}!</h1>
   <button onclick="window.location.href='/profile'">Profile</button>
-  <button>View appointments</button>
+  <button onclick="window.location.href='{{ url_for('AppointmentView', user_id=patient.Patient_ID) }}'">View appointments</button>
   <button>Bills</button>
   <button>Medical records</button>
   <button>Request an appointment</button>
