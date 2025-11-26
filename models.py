@@ -75,8 +75,7 @@ class Appointment(Base):
     Patient_ID = Column(Integer, ForeignKey('patient.Patient_ID'))
     Date = Column(Date)
     Time = Column(Time)
-    Symptoms = Column(String(100))
-    
+        
     doctor = relationship("Doctor", back_populates="appointments")
     patient = relationship("Patient", back_populates="appointments")
 
@@ -88,6 +87,7 @@ class MedicalRecord(Base):
     Patient_ID = Column(Integer, ForeignKey('patient.Patient_ID'))
     Doctor_ID = Column(Integer, ForeignKey('doctor.Doctor_ID'))
     Diagnosis = Column(String(255))
+    Symptoms = Column(String(255))
 
     patient = relationship("Patient", back_populates="medical_records")
     doctor = relationship("Doctor", back_populates="medical_records")

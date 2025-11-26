@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Doctor Profile</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -11,7 +12,7 @@
         padding: 20px;
     }
 
-    h1 {
+    title {
         color: #0055cc;
     }
 
@@ -30,8 +31,9 @@
 </style>
 </head>
 <body>
+    <app-topbar></app-topbar> 
 
-<h1>Doctor Profile</h1>
+<h1 class="title">Doctor Profile</h1>
 
 <p><strong>Email:</strong> {{ user.Email }}</p>
 <p><strong>First Name:</strong> {{ doctor.First_Name }}</p>

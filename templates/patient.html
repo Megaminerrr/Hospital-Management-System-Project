@@ -70,8 +70,8 @@
     <div class="button-grid">
       <button onclick="window.location.href='/profile'">Profile</button>
       <button onclick="window.location.href='{{ url_for('AppointmentView', user_id=patient.Patient_ID) }}'">View appointments</button> 
-      <button>Bills</button>
-      <button>Medical records</button>
+      <button onclick="window.location.href='{{ url_for('BillView', user_id=patient.Patient_ID) }}'">Bills</button>
+      <button onclick="window.location.href='{{ url_for('MedicalRecords', user_id=patient.Patient_ID) }}'">Medical records</button>
       <button onclick="window.location.href='/RequestAppointment'">Request an appointment</button>
     </div>
     <a href="/logout" class="logout">Logout</a>

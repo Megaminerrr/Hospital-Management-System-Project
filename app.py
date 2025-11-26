@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from models import User, Patient, Doctor, Administrator, Appointment, Room, Treatment, session as db_session
+from models import User, Patient, Doctor, Administrator, Appointment, Room, Treatment, Bill, MedicalRecord, Department, session as db_session
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -80,7 +81,7 @@ def signup():
     return jsonify({"status": "ok"})
 
 # --- EDIT PROFILE PAGE ---
-@app.route("/edit_profile")
+@app.route("/edit_profile", methods=["GET", "POST"])
 def edit_profile():
     if "user_id" not in session:
         return redirect("/login")
@@ -92,9 +93,29 @@ def edit_profile():
 
     if user_type == "patient":
         patient = db_session.query(Patient).filter(Patient.Patient_ID == user_id).first()
+        if request.method == "POST":
+            email = request.form.get("email", "").strip().lower()
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            address = request.form.get("address", "").strip()
+            phone = request.form.get("phone", "").strip()
+
+            if email:
+                user.Email = email
+            if first_name:
+                patient.First_Name = first_name
+            if last_name:
+                patient.Last_Name = last_name
+            patient.Address = address
+            patient.Phone = phone
+
+            db_session.commit()
+            return redirect(url_for("profile"))
+
         return render_template("editProfile.html", user=user, patient=patient)
     
     return redirect(url_for("profile"))
+
 
 
 # --- PATIENT PAGE ---
@@ -206,6 +227,7 @@ def AppointmentView(user_id):
     # Fetch appointments based on role
     appointments = []
     if user_type == "patient":
+        #patientID = db_session.query(Patient).filter(Patient.User_ID == user_id)
         appointments = db_session.query(Appointment).filter(Appointment.Patient_ID == user_id).all()
     elif user_type == "doctor":
         appointments = db_session.query(Appointment).filter(Appointment.Doctor_ID == user_id).all()
@@ -213,7 +235,42 @@ def AppointmentView(user_id):
         # Admins see all appointments
         appointments = db_session.query(Appointment).all()
 
-        return render_template("AppointmentView.html", user=user, user_type=user_type, appointments=appointments)
+    return render_template("AppointmentView.html", user=user, user_type=user_type, appointments=appointments)
+
+# --- Bill View ---
+@app.route("/BillView/<int:user_id>")
+def BillView(user_id):
+    if "user_id" not in session or session["user_id"] != user_id:
+        return redirect("/")
+
+    user_id = session["user_id"]
+    user_type = session.get("user_type", "").lower()
+
+    user = db_session.query(User).filter(User.User_ID == user_id).first()
+
+    # Fetch appointments based on role
+    bills = []
+    if user_type == "patient":
+        bills = db_session.query(Bill).filter(Bill.Patient_ID == user_id).all()
+
+        return render_template("BillView.html", user=user, user_type=user_type, bill_list=bills)
+
+@app.route("/MedicalRecords/<int:user_id>")
+def MedicalRecords(user_id):
+    if "user_id" not in session or session["user_id"] != user_id:
+        return redirect("/")
+
+    user_id = session["user_id"]
+    user_type = session.get("user_type", "").lower()
+
+    user = db_session.query(User).filter(User.User_ID == user_id).first()
+
+    # Fetch appointments based on role
+    records = []
+    if user_type == "patient":
+        records = db_session.query(MedicalRecord).filter(MedicalRecord.Patient_ID == user_id).all()
+
+        return render_template("MedicalRecords.html", user=user, user_type=user_type, records_list=records)
 
 # --- Request Appointment Page ---
 @app.route("/RequestAppointment")
@@ -301,6 +358,263 @@ def api_treatments():
     response = jsonify(data)
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
+
+# --- Additional APIs for ViewRecords page ---
+@app.get("/api/users")
+def api_users():
+    users = db_session.query(User).all()
+    data = [
+        {
+            "User_ID": u.User_ID,
+            "Email": u.Email,
+            "User_Type": u.User_Type,
+            "Password": u.Password
+        }
+        for u in users
+    ]
+    response = jsonify(data)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+@app.get("/api/administrators")
+def api_administrators():
+    admins = db_session.query(Administrator).all()
+    data = [
+        {
+            "Admin_ID": a.Admin_ID,
+            "First_Name": a.First_Name,
+            "Last_Name": a.Last_Name,
+            "Dept_ID": a.Dept_ID,
+        }
+        for a in admins
+    ]
+    response = jsonify(data)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+@app.get("/api/departments")
+def api_departments():
+    depts = db_session.query(Department).all()
+    data = [
+        {
+            "Dept_ID": d.Dept_ID,
+            "Dept_name": d.Dept_name,
+            "Dept_head": d.Dept_head,
+            "Doctor_ID": d.Doctor_ID,
+        }
+        for d in depts
+    ]
+    response = jsonify(data)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+@app.get("/api/medical_records")
+def api_medical_records():
+    records = db_session.query(MedicalRecord).all()
+    data = [
+        {
+            "Record_ID": r.Record_ID,
+            "Patient_ID": r.Patient_ID,
+            "Doctor_ID": r.Doctor_ID,
+            "Symptoms": getattr(r, "Symptoms", None),
+            "Diagnosis": r.Diagnosis,
+        }
+        for r in records
+    ]
+    response = jsonify(data)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+@app.get("/api/bills")
+def api_bills():
+    bills = db_session.query(Bill).all()
+    def serialize_dt(value):
+        return str(value) if value is not None else None
+    data = [
+        {
+            "Payment_ID": b.Payment_ID,
+            "Patient_ID": b.Patient_ID,
+            "Date": serialize_dt(b.Date),
+            "Cost": b.Cost,
+            "Paid": b.Paid,
+        }
+        for b in bills
+    ]
+    response = jsonify(data)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+# --- Create/Update records (generic) ---
+@app.post("/api/records/<string:rtype>")
+def api_records_mutation(rtype: str):
+    data = request.json or {}
+    rtype = (rtype or "").strip()
+
+    def next_id(model, id_attr):
+        current = db_session.query(getattr(model, id_attr)).order_by(getattr(model, id_attr).desc()).first()
+        return (current[0] + 1) if current and current[0] is not None else 1
+
+    def parse_date(v):
+        if not v:
+            return None
+        return datetime.strptime(v, "%Y-%m-%d").date()
+
+    def parse_time(v):
+        if not v:
+            return None
+        return datetime.strptime(v, "%H:%M").time()
+
+    # Users
+    if rtype == "Users":
+        user_id = data.get("User_ID")
+        user = db_session.query(User).filter(User.User_ID == user_id).first() if user_id else None
+        allowed_types = {"patient", "doctor", "admin"}
+        provided_type = (data.get("User_Type") or "").strip().lower()
+
+        if user:
+            email = (data.get("Email") or "").strip()
+            if email:
+                user.Email = email
+            if provided_type in allowed_types:
+                user.User_Type = provided_type
+            pwd = data.get("Password")
+            if pwd is not None and pwd != "":
+                user.Password = pwd
+            db_session.commit()
+            return jsonify({"status": "updated", "User_ID": user.User_ID})
+        # create
+        new_user = User(
+            Email=(data.get("Email") or "").strip(),
+            Password=(data.get("Password") or ""),
+            User_Type=(provided_type if provided_type in allowed_types else "patient"),
+        )
+        db_session.add(new_user)
+        db_session.commit()
+        return jsonify({"status": "created", "User_ID": new_user.User_ID})
+
+    # Departments
+    if rtype == "Departments":
+        dept_id = data.get("Dept_ID")
+        dept = db_session.query(Department).filter(Department.Dept_ID == dept_id).first() if dept_id else None
+        if dept:
+            dept.Dept_name = data.get("Dept_name", dept.Dept_name)
+            dept.Dept_head = data.get("Dept_head", dept.Dept_head)
+            dept.Doctor_ID = data.get("Doctor_ID", dept.Doctor_ID)
+            db_session.commit()
+            return jsonify({"status": "updated", "Dept_ID": dept.Dept_ID})
+        new_dept = Department(
+            Dept_ID=next_id(Department, "Dept_ID"),
+            Dept_name=data.get("Dept_name"),
+            Dept_head=data.get("Dept_head"),
+            Doctor_ID=data.get("Doctor_ID"),
+        )
+        db_session.add(new_dept)
+        db_session.commit()
+        return jsonify({"status": "created", "Dept_ID": new_dept.Dept_ID})
+
+    # Medical Records
+    if rtype == "MedicalRecords":
+        record_id = data.get("Record_ID")
+        rec = db_session.query(MedicalRecord).filter(MedicalRecord.Record_ID == record_id).first() if record_id else None
+        if rec:
+            rec.Patient_ID = data.get("Patient_ID", rec.Patient_ID)
+            rec.Doctor_ID = data.get("Doctor_ID", rec.Doctor_ID)
+            if "Symptoms" in data:
+                rec.Symptoms = data.get("Symptoms")
+            rec.Diagnosis = data.get("Diagnosis", rec.Diagnosis)
+            db_session.commit()
+            return jsonify({"status": "updated", "Record_ID": rec.Record_ID})
+        new_rec = MedicalRecord(
+            Record_ID=next_id(MedicalRecord, "Record_ID"),
+            Patient_ID=data.get("Patient_ID"),
+            Doctor_ID=data.get("Doctor_ID"),
+            Symptoms=data.get("Symptoms"),
+            Diagnosis=data.get("Diagnosis"),
+        )
+        db_session.add(new_rec)
+        db_session.commit()
+        return jsonify({"status": "created", "Record_ID": new_rec.Record_ID})
+
+    # Appointments
+    if rtype == "Appointments":
+        appt_id = data.get("Appt_ID")
+        appt = db_session.query(Appointment).filter(Appointment.Appt_ID == appt_id).first() if appt_id else None
+        if appt:
+            appt.Doctor_ID = data.get("Doctor_ID", appt.Doctor_ID)
+            appt.Patient_ID = data.get("Patient_ID", appt.Patient_ID)
+            appt.Date = parse_date(data.get("Date")) or appt.Date
+            appt.Time = parse_time(data.get("Time")) or appt.Time
+            db_session.commit()
+            return jsonify({"status": "updated", "Appt_ID": appt.Appt_ID})
+        new_appt = Appointment(
+            Doctor_ID=data.get("Doctor_ID"),
+            Patient_ID=data.get("Patient_ID"),
+            Date=parse_date(data.get("Date")),
+            Time=parse_time(data.get("Time")),
+        )
+        db_session.add(new_appt)
+        db_session.commit()
+        return jsonify({"status": "created", "Appt_ID": new_appt.Appt_ID})
+
+    # Rooms
+    if rtype == "Rooms":
+        room_id = data.get("Room_ID")
+        room = db_session.query(Room).filter(Room.Room_ID == room_id).first() if room_id else None
+        if room:
+            room.Appt_ID = data.get("Appt_ID", room.Appt_ID)
+            room.room_type = data.get("room_type", room.room_type)
+            db_session.commit()
+            return jsonify({"status": "updated", "Room_ID": room.Room_ID})
+        new_room = Room(
+            Appt_ID=data.get("Appt_ID"),
+            room_type=data.get("room_type"),
+        )
+        db_session.add(new_room)
+        db_session.commit()
+        return jsonify({"status": "created", "Room_ID": new_room.Room_ID})
+
+    # Treatments
+    if rtype == "Treatments":
+        treatment_id = data.get("Treatment_ID")
+        tr = db_session.query(Treatment).filter(Treatment.Treatment_ID == treatment_id).first() if treatment_id else None
+        if tr:
+            tr.Record_ID = data.get("Record_ID", tr.Record_ID)
+            tr.Medicine = data.get("Medicine", tr.Medicine)
+            tr.Prescription = data.get("Prescription", tr.Prescription)
+            db_session.commit()
+            return jsonify({"status": "updated", "Treatment_ID": tr.Treatment_ID})
+        new_tr = Treatment(
+            Record_ID=data.get("Record_ID"),
+            Medicine=data.get("Medicine"),
+            Prescription=data.get("Prescription"),
+        )
+        db_session.add(new_tr)
+        db_session.commit()
+        return jsonify({"status": "created", "Treatment_ID": new_tr.Treatment_ID})
+
+    # Bills
+    if rtype == "Bills":
+        payment_id = data.get("Payment_ID")
+        b = db_session.query(Bill).filter(Bill.Payment_ID == payment_id).first() if payment_id else None
+        if b:
+            b.Patient_ID = data.get("Patient_ID", b.Patient_ID)
+            b.Date = parse_date(data.get("Date")) or b.Date
+            b.Cost = float(data.get("Cost")) if data.get("Cost") not in (None, "") else b.Cost
+            if "Paid" in data:
+                b.Paid = data.get("Paid")
+            db_session.commit()
+            return jsonify({"status": "updated", "Payment_ID": b.Payment_ID})
+        new_b = Bill(
+            Patient_ID=data.get("Patient_ID"),
+            Date=parse_date(data.get("Date")),
+            Cost=float(data.get("Cost")) if data.get("Cost") not in (None, "") else 0.0,
+            Paid=data.get("Paid"),
+        )
+        db_session.add(new_b)
+        db_session.commit()
+        return jsonify({"status": "created", "Payment_ID": new_b.Payment_ID})
+
+    return jsonify({"error": "Unsupported type"}), 400
 
 if __name__ == "__main__":
     app.run(debug=True)

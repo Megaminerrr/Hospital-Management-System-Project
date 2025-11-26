@@ -13,13 +13,33 @@ from models import (
     Bill,
     Department,
 )
-from datetime import date, time
+from datetime import date, time, datetime
+import os
+import csv
+from sqlalchemy import text
 
 # Creates a connection to database
 engine = init_db()
 Session = sessionmaker(bind=engine)
 session = Session()
 
+# Ensure schema quirks (idempotent migrations)
+def ensure_bill_paid_column():
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text("PRAGMA table_info(bill)")).fetchall()
+            has_paid = any(r[1] == "Paid" for r in rows)
+            if not has_paid:
+                conn.exec_driver_sql("ALTER TABLE bill ADD COLUMN Paid VARCHAR(3)")
+    except Exception:
+        # Best-effort; if this fails, later operations may still work if column exists
+        pass
+
+ensure_bill_paid_column()
+
+# -----------------------------
+# Helper functions (idempotent creators)
+# -----------------------------
 def ensure_user(email, password, user_type):
     user = session.query(User).filter(User.Email == email).first()
     if user:
@@ -127,7 +147,8 @@ def ensure_room(appt_id, room_type):
     return room
 
 
-def ensure_medical_record(patient_id, doctor_id, diagnosis):
+def ensure_medical_record(patient_id, doctor_id, diagnosis, symptoms=None):
+    # Find by key fields first (avoid dupes regardless of symptoms)
     record = (
         session.query(MedicalRecord)
         .filter(
@@ -138,11 +159,16 @@ def ensure_medical_record(patient_id, doctor_id, diagnosis):
         .first()
     )
     if record:
+        # Backfill symptoms if missing
+        if symptoms and (not getattr(record, "Symptoms", None)):
+            record.Symptoms = symptoms
+            session.flush()
         return record
     record = MedicalRecord(
         Patient_ID=patient_id,
         Doctor_ID=doctor_id,
         Diagnosis=diagnosis,
+        Symptoms=symptoms,
     )
     session.add(record)
     session.flush()
@@ -171,7 +197,7 @@ def ensure_treatment(record_id, medicine, prescription):
     return treatment
 
 
-def ensure_bill(patient_id, bill_date, cost):
+def ensure_bill(patient_id, bill_date, cost, paid=None):
     bill = (
         session.query(Bill)
         .filter(
@@ -187,6 +213,7 @@ def ensure_bill(patient_id, bill_date, cost):
         Patient_ID=patient_id,
         Date=bill_date,
         Cost=cost,
+        Paid=paid,
     )
     session.add(bill)
     session.flush()
@@ -194,73 +221,234 @@ def ensure_bill(patient_id, bill_date, cost):
 
 
 # -----------------------------
-# Seed Users and Profiles
+# Loading helpers
 # -----------------------------
-admin_user = ensure_user('admin@hospital.com', 'admin123', 'admin')
-admin_profile = ensure_admin(admin_user, 'Anna', 'Admin')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SEED_DIR = os.path.join(BASE_DIR, "seed_data")
 
-doctor1_user = ensure_user('dr.smith@hospital.com', 'doc123', 'doctor')
-doctor1 = ensure_doctor(doctor1_user, 'John', 'Smith', 'Cardiology')
 
-doctor2_user = ensure_user('dr.jones@hospital.com', 'doc123', 'doctor')
-doctor2 = ensure_doctor(doctor2_user, 'Alice', 'Jones', 'Neurology')
+def read_rows(file_name):
+    """
+    Reads CSV-with-headers from seed_data/<file_name>.
+    - Supports .txt or .csv naming (prefers .txt).
+    - Ignores empty lines and lines starting with '#'
+    Returns list[dict]. Missing file -> empty list.
+    """
+    candidates = [
+        os.path.join(SEED_DIR, f"{file_name}.txt"),
+        os.path.join(SEED_DIR, f"{file_name}.csv"),
+    ]
+    path = next((p for p in candidates if os.path.exists(p)), None)
+    if not path:
+        return []
 
-doctor3_user = ensure_user('dr.lee@hospital.com', 'doc123', 'doctor')
-doctor3 = ensure_doctor(doctor3_user, 'David', 'Lee', 'Pediatrics')
+    rows = []
+    with open(path, "r", encoding="utf-8-sig", newline="") as fh:
+        # Filter comments/blank lines while retaining CSV parsing
+        filtered = [line for line in fh if line.strip() and not line.lstrip().startswith("#")]
+        if not filtered:
+            return []
+        reader = csv.DictReader(filtered)
+        for raw in reader:
+            # strip whitespace from keys/values
+            row = {k.strip(): (v.strip() if isinstance(v, str) else v) for k, v in raw.items() if k is not None}
+            rows.append(row)
+    return rows
 
-patient1_user = ensure_user('patient@hospital.com', 'patient123', 'patient')
-patient1 = ensure_patient(patient1_user, 'Emily', 'Stone', '123 Health St', '0401234567', 'Healthy')
 
-patient2_user = ensure_user('michael@hospital.com', 'patient123', 'patient')
-patient2 = ensure_patient(patient2_user, 'Michael', 'Brown', '456 Wellness Ave', '0407654321', 'Allergic Rhinitis')
+def parse_date(value):
+    if not value:
+        return None
+    # Accept YYYY-MM-DD
+    return datetime.strptime(value, "%Y-%m-%d").date()
 
-patient3_user = ensure_user('sara@hospital.com', 'patient123', 'patient')
-patient3 = ensure_patient(patient3_user, 'Sara', 'Connor', '789 Care Rd', '0405550000', 'Asthma')
 
-# -----------------------------
-# Seed Departments and link them
-# -----------------------------
-cardiology = ensure_department('Cardiology', 'Dr. John Smith', doctor1.Doctor_ID)
-neurology = ensure_department('Neurology', 'Dr. Alice Jones', doctor2.Doctor_ID)
-pediatrics = ensure_department('Pediatrics', 'Dr. David Lee', doctor3.Doctor_ID)
+def parse_time(value):
+    if not value:
+        return None
+    # Accept HH:MM (24h)
+    return datetime.strptime(value, "%H:%M").time()
 
-# link admin to a department if not set
-if admin_profile.Dept_ID is None:
-    admin_profile.Dept_ID = cardiology.Dept_ID
-    session.flush()
 
-# -----------------------------
-# Seed Appointments
-# -----------------------------
-appt1 = ensure_appointment(doctor1.Doctor_ID, patient1.Patient_ID, date.today(), time(10, 0))
-appt2 = ensure_appointment(doctor1.Doctor_ID, patient2.Patient_ID, date.today(), time(11, 30))
-appt3 = ensure_appointment(doctor2.Doctor_ID, patient1.Patient_ID, date.today(), time(14, 0))
-appt4 = ensure_appointment(doctor3.Doctor_ID, patient3.Patient_ID, date.today(), time(9, 15))
+def to_float(value):
+    if value is None or value == "":
+        return None
+    return float(value)
 
-# -----------------------------
-# Seed Rooms for some appointments
-# -----------------------------
-ensure_room(appt1.Appt_ID, 'consultation')
-ensure_room(appt3.Appt_ID, 'examination')
-
-# -----------------------------
-# Seed Medical Records and Treatments
-# -----------------------------
-rec1 = ensure_medical_record(patient1.Patient_ID, doctor1.Doctor_ID, 'Routine check-up')
-ensure_treatment(rec1.Record_ID, 'Vitamin D', 'Take 1000 IU daily')
-
-rec2 = ensure_medical_record(patient2.Patient_ID, doctor1.Doctor_ID, 'Cardiac screening')
-ensure_treatment(rec2.Record_ID, 'Aspirin', '81 mg daily')
-
-rec3 = ensure_medical_record(patient3.Patient_ID, doctor3.Doctor_ID, 'Pediatric consultation')
-ensure_treatment(rec3.Record_ID, 'Albuterol', 'Two puffs as needed')
 
 # -----------------------------
-# Seed Bills
+# Seed from files (order matters due to FKs)
 # -----------------------------
-ensure_bill(patient1.Patient_ID, date.today(), 120.00)
-ensure_bill(patient2.Patient_ID, date.today(), 250.00)
-ensure_bill(patient3.Patient_ID, date.today(), 80.00)
+# 1) Users
+for row in read_rows("users"):
+    ensure_user(
+        email=row.get("Email"),
+        password=row.get("Password"),
+        user_type=row.get("User_Type"),
+    )
+
+session.flush()
+
+# Build quick lookup maps by email
+email_to_user = {u.Email: u for u in session.query(User).all()}
+
+# 2) Doctors
+for row in read_rows("doctors"):
+    email = row.get("Email")
+    user = email_to_user.get(email) or ensure_user(email=email, password=row.get("Password", ""), user_type="doctor")
+    email_to_user[email] = user
+    ensure_doctor(
+        user=user,
+        first_name=row.get("First_Name"),
+        last_name=row.get("Last_Name"),
+        specialization=row.get("Specialization"),
+    )
+
+# 3) Patients
+for row in read_rows("patients"):
+    email = row.get("Email")
+    user = email_to_user.get(email) or ensure_user(email=email, password=row.get("Password", ""), user_type="patient")
+    email_to_user[email] = user
+    ensure_patient(
+        user=user,
+        first_name=row.get("First_Name"),
+        last_name=row.get("Last_Name"),
+        address=row.get("Address"),
+        phone=row.get("Phone"),
+        condition=row.get("Condition"),
+        admission=parse_date(row.get("Admission_Date")),
+        discharge=parse_date(row.get("Discharge_Date")),
+    )
+
+# 4) Administrators
+for row in read_rows("administrators"):
+    email = row.get("Email")
+    user = email_to_user.get(email) or ensure_user(email=email, password=row.get("Password", ""), user_type="admin")
+    email_to_user[email] = user
+    ensure_admin(
+        user=user,
+        first_name=row.get("First_Name"),
+        last_name=row.get("Last_Name"),
+        dept_id=None,  # optionally linked after departments
+    )
+
+session.flush()
+
+# Build role maps
+doctor_email_to_id = {d.user.Email: d.Doctor_ID for d in session.query(Doctor).all() if d.user}
+patient_email_to_id = {p.user.Email: p.Patient_ID for p in session.query(Patient).all() if p.user}
+
+# 5) Departments
+for row in read_rows("departments"):
+    doc_email = row.get("Doctor_Email")
+    doc_id = doctor_email_to_id.get(doc_email) if doc_email else None
+    ensure_department(
+        name=row.get("Dept_name") or row.get("Name"),
+        head=row.get("Dept_head") or row.get("Head"),
+        doctor_id=doc_id,
+    )
+
+session.flush()
+
+# Optionally link admins to departments if provided in file
+dept_name_to_dept = {d.Dept_name: d for d in session.query(Department).all()}
+for row in read_rows("administrators"):
+    email = row.get("Email")
+    dept_name = row.get("Dept_name") or row.get("Dept")
+    if not dept_name:
+        continue
+    user = email_to_user.get(email)
+    dept = dept_name_to_dept.get(dept_name)
+    if user and dept:
+        admin = session.query(Administrator).filter(Administrator.Admin_ID == user.User_ID).first()
+        if admin and admin.Dept_ID != dept.Dept_ID:
+            admin.Dept_ID = dept.Dept_ID
+            session.flush()
+
+# 6) Appointments
+for row in read_rows("appointments"):
+    doc_email = row.get("Doctor_Email")
+    pat_email = row.get("Patient_Email")
+    d_id = doctor_email_to_id.get(doc_email)
+    p_id = patient_email_to_id.get(pat_email)
+    if not d_id or not p_id:
+        continue
+    appt = ensure_appointment(
+        doctor_id=d_id,
+        patient_id=p_id,
+        appt_date=parse_date(row.get("Date")),
+        appt_time=parse_time(row.get("Time")),
+    )
+
+# Map to find appointment by composite values for room linking
+def find_appointment_id(doctor_id, patient_id, appt_date, appt_time):
+    appt = (
+        session.query(Appointment)
+        .filter(
+            Appointment.Doctor_ID == doctor_id,
+            Appointment.Patient_ID == patient_id,
+            Appointment.Date == appt_date,
+            Appointment.Time == appt_time,
+        )
+        .first()
+    )
+    return appt.Appt_ID if appt else None
+
+# 7) Rooms
+for row in read_rows("rooms"):
+    doc_email = row.get("Doctor_Email")
+    pat_email = row.get("Patient_Email")
+    d_id = doctor_email_to_id.get(doc_email)
+    p_id = patient_email_to_id.get(pat_email)
+    appt_date = parse_date(row.get("Date"))
+    appt_time = parse_time(row.get("Time"))
+    appt_id = find_appointment_id(d_id, p_id, appt_date, appt_time) if d_id and p_id else None
+    if appt_id:
+        ensure_room(appt_id, row.get("room_type") or row.get("Room_Type"))
+
+# 8) Medical Records
+for row in read_rows("medical_records"):
+    doc_email = row.get("Doctor_Email")
+    pat_email = row.get("Patient_Email")
+    d_id = doctor_email_to_id.get(doc_email)
+    p_id = patient_email_to_id.get(pat_email)
+    if not d_id or not p_id:
+        continue
+    ensure_medical_record(
+        patient_id=p_id,
+        doctor_id=d_id,
+        diagnosis=row.get("Diagnosis"),
+        symptoms=row.get("Symptoms"),
+    )
+
+# 9) Treatments
+for row in read_rows("treatments"):
+    doc_email = row.get("Doctor_Email")
+    pat_email = row.get("Patient_Email")
+    diagnosis = row.get("Diagnosis")
+    d_id = doctor_email_to_id.get(doc_email)
+    p_id = patient_email_to_id.get(pat_email)
+    if not d_id or not p_id:
+        continue
+    record = ensure_medical_record(p_id, d_id, diagnosis)
+    ensure_treatment(
+        record_id=record.Record_ID,
+        medicine=row.get("Medicine"),
+        prescription=row.get("Prescription") or row.get("Perscription"),
+    )
+
+# 10) Bills
+for row in read_rows("bills"):
+    pat_email = row.get("Patient_Email")
+    p_id = patient_email_to_id.get(pat_email)
+    if not p_id:
+        continue
+    ensure_bill(
+        patient_id=p_id,
+        bill_date=parse_date(row.get("Date")),
+        cost=to_float(row.get("Cost")),
+        paid=row.get("Paid"),
+    )
 
 # -----------------------------
 # Save all
