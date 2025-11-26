@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from models import User, Patient, Doctor, Administrator, Appointment, Room, Treatment, Bill, MedicalRecord, Department, session as db_session
-from datetime import datetime
+from datetime import datetime, timedelta, time
+from sqlalchemy import func
 
 
 app = Flask(__name__)
@@ -269,6 +270,8 @@ def MedicalRecords(user_id):
     records = []
     if user_type == "patient":
         records = db_session.query(MedicalRecord).filter(MedicalRecord.Patient_ID == user_id).all()
+    if user_type == "doctor":
+        records = db_session.query(MedicalRecord).filter(MedicalRecord.Doctor_ID == user_id).all()
 
         return render_template("MedicalRecords.html", user=user, user_type=user_type, records_list=records)
 
@@ -615,6 +618,86 @@ def api_records_mutation(rtype: str):
         return jsonify({"status": "created", "Payment_ID": new_b.Payment_ID})
 
     return jsonify({"error": "Unsupported type"}), 400
+
+@app.post("/api/appointments/auto")
+def api_appointments_auto():
+    # Must be logged in as patient
+    if "user_id" not in session or session.get("user_type", "").lower() != "patient":
+        return jsonify({"error": "Unauthorized"}), 401
+    patient_id = session.get("patient_id") or session.get("user_id")
+
+    # Pick the doctor with the fewest total appointments (fair load distribution)
+    doctor_row = (
+        db_session.query(Doctor, func.count(Appointment.Appt_ID).label("num_appts"))
+        .outerjoin(Appointment, Doctor.Doctor_ID == Appointment.Doctor_ID)
+        .group_by(Doctor.Doctor_ID)
+        .order_by(func.count(Appointment.Appt_ID).asc(), Doctor.Doctor_ID.asc())
+        .first()
+    )
+    doctor = doctor_row[0] if doctor_row else None
+    if not doctor:
+        return jsonify({"error": "No doctors available"}), 400
+
+    # Start searching 3 days from now
+    appt_date = (datetime.utcnow() + timedelta(days=3)).date()
+
+    # Search business hours: 09:00 - 16:00, on the earliest day with a free slot
+    max_days_ahead = 60
+    chosen_date = None
+    chosen_time = None
+    for offset in range(0, max_days_ahead + 1):
+        candidate_date = appt_date + timedelta(days=offset)
+        for hour in range(9, 17):  # 09:00 to 16:00 inclusive
+            candidate_time = time(hour, 0)
+            doctor_busy = (
+                db_session.query(Appointment)
+                .filter(
+                    Appointment.Doctor_ID == doctor.Doctor_ID,
+                    Appointment.Date == candidate_date,
+                    Appointment.Time == candidate_time,
+                )
+                .first()
+            )
+            if doctor_busy:
+                continue
+            patient_busy = (
+                db_session.query(Appointment)
+                .filter(
+                    Appointment.Patient_ID == patient_id,
+                    Appointment.Date == candidate_date,
+                    Appointment.Time == candidate_time,
+                )
+                .first()
+            )
+            if patient_busy:
+                continue
+            chosen_date = candidate_date
+            chosen_time = candidate_time
+            break
+        if chosen_date is not None:
+            break
+
+    if chosen_date is None:
+        return jsonify({"error": "No available slots"}), 409
+
+    appt = Appointment(
+        Doctor_ID=doctor.Doctor_ID,
+        Patient_ID=patient_id,
+        Date=chosen_date,
+        Time=chosen_time,
+    )
+    db_session.add(appt)
+    db_session.commit()
+
+    doctor_name = f"{doctor.First_Name} {doctor.Last_Name}"
+    return jsonify({
+        "status": "created",
+        "Appt_ID": appt.Appt_ID,
+        "Doctor_ID": doctor.Doctor_ID,
+        "Doctor_Name": doctor_name,
+        "Date": str(chosen_date),
+        "Time": chosen_time.strftime("%H:%M"),
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)

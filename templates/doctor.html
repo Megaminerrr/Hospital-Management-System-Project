@@ -67,6 +67,7 @@
     <div class="button-grid">
       <button onclick="window.location.href='/profile'">Profile</button>
       <button onclick="window.location.href='{{ url_for('AppointmentView', user_id=doctor.Doctor_ID) }}'">View appointments</button>
+      <button onclick="window.location.href='{{ url_for('MedicalRecords', user_id=doctor.Doctor_ID) }}'">Medical records</button>
       
     </div>
     <a href="/logout" class="logout">Logout</a>

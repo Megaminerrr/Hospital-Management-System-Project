@@ -306,3 +306,19 @@ class AppTopbar extends HTMLElement {
     }
   }
   customElements.define('app-topbar', AppTopbar);
+
+// --- Patient quick scheduling ---
+function scheduleAutoAppointment() {
+  fetch("/api/appointments/auto", { method: "POST" })
+    .then(r => r.json())
+    .then(res => {
+      if (res && (res.status === "created" || res.status === "exists")) {
+        alert(`Appointment scheduled on ${res.Date} at ${res.Time} with Dr. ${res.Doctor_Name}.`);
+      } else if (res && res.error) {
+        alert(`Failed to schedule: ${res.error}`);
+      } else {
+        alert("Failed to schedule appointment.");
+      }
+    })
+    .catch(() => alert("Network error scheduling appointment."));
+}
